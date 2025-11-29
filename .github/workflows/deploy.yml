@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    # 当推送到 main/master 分支时触发
+    branches:
+      - main 
+      # - master # 如果您的主分支是 master
+
+  # 允许手动从 Actions 选项卡运行此工作流
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出代码
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. 设置 Node.js 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # 使用推荐的 Node.js 版本
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: npm install
+
+      # 4. 构建项目 (生成 dist 目录)
+      - name: Build project
+        run: npm run build
+
+      # 5. 部署到 GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist # 指定要部署的目录 (Vite 默认为 dist)
+          # 如果是用户页面 (username.github.io)，可以使用 'main' 分支
+          # 如果是项目页面 (username.github.io/repo-name)，默认部署到 gh-pages 分支
+          # publish_branch: gh-pages # 默认值，通常不需要指定
