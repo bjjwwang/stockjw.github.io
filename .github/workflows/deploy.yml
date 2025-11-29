@@ -40,4 +40,4 @@ jobs:
           publish_dir: ./dist # 指定要部署的目录 (Vite 默认为 dist)
           # 如果是用户页面 (username.github.io)，可以使用 'main' 分支
           # 如果是项目页面 (username.github.io/repo-name)，默认部署到 gh-pages 分支
-          # publish_branch: gh-pages # 默认值，通常不需要指定
+          publish_branch: gh-pages # 默认值，通常不需要指定

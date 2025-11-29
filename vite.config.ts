@@ -7,8 +7,7 @@ export default defineConfig(({ mode }) => {
     return {
         // 🚀 关键修改点：添加 base 属性并设置为根路径 '/'
         // 因为您的仓库是 bjjwwang.github.io，部署在根域名下。
-        base: '/', 
-        
+       base: '/stockjw.github.io/', 
         server: {
             port: 3000,
             host: '0.0.0.0',
