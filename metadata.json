@@ -1,5 +1,0 @@
-{
-  "name": "QuantFlow AI",
-  "description": "An intelligent stock selection engine leveraging Gemini AI to analyze market dimensions, capital flow, and price trends for US and Chinese markets.",
-  "requestFramePermissions": []
-}
