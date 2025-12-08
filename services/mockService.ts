@@ -3,16 +3,41 @@ import { StrategyConfig, StockCardData } from '../types';
 
 /**
  * FETCH REAL-TIME MARKET DATA USING GEMINI WITH GOOGLE SEARCH
- * Simulating Backend yfinance logic via Serverless AI Grounding
+ * Simulating Backend yfinance logic + Python Algorithms via Serverless AI Grounding
  */
 
 export const mockScanMarket = async (config: StrategyConfig): Promise<StockCardData[]> => {
     // 1. Determine Search Context
     const isCN = config.market_scope === 'CN';
     const marketLabel = isCN ? '中国A股 (China A-Shares)' : '美股 (US Market)';
+    const currency = isCN ? 'CNY' : 'USD';
     const sector = config.selected_sectors.length > 0 ? config.selected_sectors[0] : '当前市场热点';
     const factors = config.selected_factors.join(', ') || '量价齐升';
-    const cap = config.market_cap_tier === 'all' ? '' : `市值: ${config.market_cap_tier}`;
+    
+    // Python Logic Porting: Market Cap Thresholds
+    // Mapping UI 'Small' to Python 'Micro + Small' (< 20B)
+    let capInstruction = "";
+    if (config.market_cap_tier === 'small') {
+        capInstruction = `
+        def check_market_cap(cap):
+            # STRICT RULE: Market Cap must be LESS THAN 20 Billion ${currency}.
+            # CRITICAL: IF symbol is 'NVDA', 'AAPL', 'MSFT', 'GOOG' or any large cap -> RETURN FALSE immediately.
+            return cap < 20000000000
+        `;
+    } else if (config.market_cap_tier === 'mid') {
+        capInstruction = `
+        def check_market_cap(cap):
+            # STRICT RULE: Market Cap must be between 20 Billion and 100 Billion ${currency}.
+            return 20000000000 <= cap < 100000000000
+        `;
+    } else if (config.market_cap_tier === 'large') {
+        capInstruction = `
+        def check_market_cap(cap):
+            # STRICT RULE: Market Cap must be GREATER THAN 100 Billion ${currency}.
+            return cap >= 100000000000
+        `;
+    }
+
     const slopeMin = config.slope_range[0];
     const slopeMax = config.slope_range[1];
 
@@ -22,49 +47,62 @@ export const mockScanMarket = async (config: StrategyConfig): Promise<StockCardD
     // Initialize Gemini
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // 3. Construct STRICT Prompt for Real-Time Data (Simulating yfinance)
+    // 3. Construct STRICT Prompt simulating Python Logic
     const prompt = `
-    Role: Financial Data API Proxy (Simulating yfinance).
-    Context: The user demands REAL-TIME market data.
+    Role: Senior Quant Execution Engine (Python Simulation).
     Current Beijing Time: ${now}.
+    Target Market: ${marketLabel}.
+    Sector: ${sector}.
     
-    Target: Find 2 distinct stocks in ${marketLabel} related to "${sector}".
+    You are strictly simulating the following Python Logic. Do not hallucinate data.
+
+    --- PYTHON LOGIC START ---
     
-    LOGIC REQUIREMENT (Python Simulation):
-    - Identify valid tickers.
-    - If A-Share (6 digits): Append .SS (Shanghai) if starts with '6', else .SZ (Shenzhen).
-    - Fetch LATEST price, change %, VOLUME, and market cap.
+    ${capInstruction}
+
+    def calculate_technical_features(prices):
+        # 1. Normalize prices to 0-1 scale to make slope comparable.
+        # 2. Simulate sklearn.LinearRegression on the last 20 bars.
+        # 3. Raw Slope k = model.coef_[0]
+        # 4. Score = np.clip(k * 10, 0.0, 1.0)
+        # TARGET SCORE: ${slopeMin} to ${slopeMax}
+        return score
+
+    --- PYTHON LOGIC END ---
+
+    TASK:
+    Use Google Search to find 2 REAL stocks that satisfy valid_ticker() AND check_market_cap() AND calculate_technical_features().
     
-    CRITICAL CRITERIA:
-    1. **REAL-TIME PRICE**: Use Google Search to find the price at this exact moment (${now}).
-    2. **QUOTE TIME**: Must be specific (e.g., "14:35:12"). If market is closed, state "收盘".
-    3. **STATUS**: Must show "${factors}" pattern.
-    4. **SLOPE**: Trend score between ${slopeMin} and ${slopeMax}.
+    CRITICAL CONSTRAINTS:
+    1. **Real-time**: Price MUST be current as of ${now}.
+    2. **Market Cap Gate**: If user chose "Small", absolutely NO large caps (like NVDA). Verify market cap in real-time.
+    3. **Language**: All "name", "analysis" fields MUST be in Simplified Chinese.
     
-    Output Format:
-    Return a valid JSON array ONLY.
-    
-    interface StockData {
-      symbol: string; // Keep raw ticker here (e.g. 600519), we handle suffix in post-processing.
-      name: string; // Chinese Name
-      price: number; // REAL-TIME PRICE
-      change_percent: number; // REAL-TIME CHANGE
-      market_cap: string;
-      volume: string; // e.g. "成交量: 30万手" or "Vol: 10M"
-      quote_time: string; // Timestamp of the data
-      slope: number; // Estimated trend strength (${slopeMin}-${slopeMax})
-      tags: { label: string; type: 'bullish' | 'bearish' | 'neutral' | 'event' }[];
-      analysis: {
-        event_title: string;
-        event_content: string; 
-        ai_logic: string; // Why selected (Chinese)
-        tech_diagnosis: string; // Technical analysis (Chinese)
-        fund_analysis: string; // Money flow (Chinese)
-      };
-      charts: { trend: 'up' | 'down' | 'flat' };
-    }
-    
-    Strictly verify data. Output in Simplified Chinese.
+    OUTPUT FORMAT (JSON Array Only):
+    [
+      {
+        "symbol": "Ticker (e.g. 600519.SS or PLTR)",
+        "name": "Chinese Name",
+        "price": 123.45,
+        "change_percent": 2.5,
+        "market_cap": "150亿", 
+        "volume": "35万手",
+        "quote_time": "14:35:00",
+        "slope": 0.85, // The simulated regression score
+        "tags": [
+             {"label": "Small Cap Checked", "type": "neutral"}, 
+             {"label": "Strong Trend", "type": "bullish"}
+        ],
+        "analysis": {
+            "event_title": "Selection Logic",
+            "event_content": "Latest news...",
+            "ai_logic": "Explain why it passed the Python logic (in Chinese)...",
+            "tech_diagnosis": "Technical structure (in Chinese)...",
+            "fund_analysis": "Money flow (in Chinese)..."
+        },
+        "charts": {"trend": "up"}
+      }
+    ]
     `;
 
     try {
@@ -118,6 +156,7 @@ export const mockScanMarket = async (config: StrategyConfig): Promise<StockCardD
                 ...item,
                 symbol: finalSymbol,
                 sources: sources.slice(0, 3),
+                // Ensure slope is present
                 slope: item.slope ?? (slopeMin + 0.1)
             };
         });
@@ -126,7 +165,7 @@ export const mockScanMarket = async (config: StrategyConfig): Promise<StockCardD
         console.error("Gemini API Error:", error);
         return [{
             symbol: "ERROR",
-            name: "数据同步失败",
+            name: "逻辑校验失败",
             price: 0,
             change_percent: 0,
             market_cap: "-",
@@ -136,7 +175,7 @@ export const mockScanMarket = async (config: StrategyConfig): Promise<StockCardD
             tags: [{label: "API Error", type: "bearish"}],
             analysis: {
                 event_title: "连接中断",
-                event_content: "无法连接到实时行情代理，请检查网络。",
+                event_content: "AI 无法执行 Python 逻辑校验，请检查 API Key 或网络。",
                 ai_logic: "无",
                 tech_diagnosis: "无",
                 fund_analysis: "无"
